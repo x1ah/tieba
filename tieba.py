@@ -139,7 +139,7 @@ class Tieba:
         n_succeed, n_faild = 0, 0
         for forum in forums:
             try:
-                succeed = self.sign(forum["fid"], forum["name"])
+                succeed = self.sign(forum["id"], forum["name"])
                 if succeed:
                     n_succeed += 1
                 else:
