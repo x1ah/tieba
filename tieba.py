@@ -28,7 +28,7 @@ class Tieba:
     logger: logging.Logger
     channel: MsgChannel
 
-    def __init__(self, bduss: str, channel: MsgChannel) -> None:
+    def __init__(self, bduss: str, channel: MsgChannel = None) -> None:
         """bduss: 贴吧 cookie"""
         self.bduss = bduss
         self.logger = logging.getLogger(__name__)
@@ -147,7 +147,8 @@ class Tieba:
             except Exception as e:
                 self.logger.error(f"签到失败: {str(e)}")
             time.sleep(1.3)
-        self.channel.send(f"贴吧签到结束\n\n签到成功 {n_succeed} 个\n签到异常 {n_faild} 个")
+        if self.channel:
+            self.channel.send(f"贴吧签到结束\n\n签到成功 {n_succeed} 个\n签到异常 {n_faild} 个")
 
 
 if __name__ == "__main__":
