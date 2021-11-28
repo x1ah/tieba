@@ -96,8 +96,8 @@ class Tieba:
         resp_json = resp.json()
         has_next = resp_json.get("has_more") == "1"
         forum_list = []
-        forum_list += resp_json.get("forum_list", {}).get("non-gconforum")
-        forum_list += resp_json.get("forum_list", {}).get("gconforum")
+        forum_list += resp_json.get("forum_list", {}).get("non-gconforum", [])
+        forum_list += resp_json.get("forum_list", {}).get("gconforum", [])
         if has_next:
             forum_list += self.get_likes(page_no + 1)
         return forum_list
