@@ -9,11 +9,15 @@ logging.basicConfig(
 
 
 class MsgChannel:
+    name: str = "unknown channel"
+
     def send(self, text: str):
         raise NotImplemented("not implemented")
 
 
 class LarkChannel(MsgChannel):
+    name = "飞书自定义机器人"
+
     def __init__(self, webhook: str) -> None:
         self.webhook = webhook
 
@@ -22,17 +26,27 @@ class LarkChannel(MsgChannel):
             self.webhook, json={"msg_type": "text", "content": {"text": text}}
         )
 
+class WorkWechatBotChannel(MsgChannel):
+    name = "企业微信机器人"
+
+    def __init__(self, key: str) -> None:
+        self.webhook = f"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={key}"
+
+    def send(self, text: str):
+        return requests.post(
+            self.webhook, json={"msgtype": "text", "text": {"content": text}}
+        )
 
 class Tieba:
     bduss: str
     logger: logging.Logger
     channel: MsgChannel
 
-    def __init__(self, bduss: str, channel: MsgChannel = None) -> None:
+    def __init__(self, bduss: str, channels: List[MsgChannel] = None) -> None:
         """bduss: 贴吧 cookie"""
         self.bduss = bduss
         self.logger = logging.getLogger(__name__)
-        self.channel = channel
+        self.channels = channels or []
 
     @property
     def session(self) -> requests.Session:
@@ -147,10 +161,18 @@ class Tieba:
             except Exception as e:
                 self.logger.error(f"签到失败: {str(e)}")
             time.sleep(1.3)
-        if self.channel:
-            self.channel.send(f"贴吧签到结束\n\n签到成功 {n_succeed} 个\n签到异常 {n_faild} 个")
+
+        msg = f"贴吧签到结束\n\n签到成功 {n_succeed} 个\n签到异常 {n_faild} 个"
+        for channel in self.channels:
+            try:
+                channel.send(msg)
+            except Exception as e:
+                self.logger.error(f"[{channel.name}] 发送消息失败: {str(e)}")
 
 
 if __name__ == "__main__":
-    tb = Tieba("BDUSS", LarkChannel("example webhook"))
+    tb = Tieba("BDUSS", [
+        LarkChannel("飞书 webhook"),
+        WorkWechatBotChannel("企业微信机器人 key"),
+    ])
     tb.run()
