@@ -9,7 +9,20 @@
 3. 安装依赖: `pip install -r requirements.txt`
 4. 运行脚本: `python tieba.py`
 
-## 运行结果通知
+## 示例配置
 
-- 飞书
+```python
+
+if __name__ == "__main__":
+    tb = Tieba("BDUSS cookie 值", [
+        LarkChannel("飞书 webhook 地址"),
+        WorkWechatBotChannel("企业微信机器人 key"),
+    ])
+    tb.run()
+```
+
+## 支持的运行结果通知
+
+- 飞书自定义机器人
+- 企业微信机器人
 
