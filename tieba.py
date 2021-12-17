@@ -3,6 +3,9 @@ import requests
 import hashlib
 import time
 
+from typing import List
+
+
 logging.basicConfig(
     level=logging.INFO, format="[%(levelname)s] %(asctime)s: %(message)s"
 )
@@ -26,6 +29,7 @@ class LarkChannel(MsgChannel):
             self.webhook, json={"msg_type": "text", "content": {"text": text}}
         )
 
+
 class WorkWechatBotChannel(MsgChannel):
     name = "企业微信机器人"
 
@@ -36,6 +40,7 @@ class WorkWechatBotChannel(MsgChannel):
         return requests.post(
             self.webhook, json={"msgtype": "text", "text": {"content": text}}
         )
+
 
 class Tieba:
     bduss: str
