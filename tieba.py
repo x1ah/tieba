@@ -1,7 +1,10 @@
+from ast import For
 import logging
+from turtle import st
 import requests
 import hashlib
 import time
+from dataclasses import dataclass
 
 from typing import List
 
@@ -9,6 +12,11 @@ from typing import List
 logging.basicConfig(
     level=logging.INFO, format="[%(levelname)s] %(asctime)s: %(message)s"
 )
+
+@dataclass
+class ForumInfo:
+    forum_id: int
+    forum_name: str
 
 
 class MsgChannel:
@@ -153,12 +161,61 @@ class Tieba:
         self.logger.info(f"[{name}] 签到成功")
         return True
 
+    def like(self, fid: int, fname: str):
+        data = {
+            "fid": fid,
+            "kw": fname,
+            "tbs": self.tbs,
+            "BDUSS": self.bduss
+        }
+        sig = self.signature(data)
+        data["sign"] = sig
+        resp = self.session.post("http://c.tieba.baidu.com/c/c/forum/like", data=data)
+
+        if resp.json().get("error", {}).get("errno") != 0:
+            msg = resp.json().get("error", {}).get("errmsg", "")
+            self.logger.error(f"[{fname}] 关注失败：{msg}")
+            return False
+        self.logger.info(f"[{fname}] 关注成功")
+        return True
+
+    def get_hot_forums(self, page: int = 0, size: int = 100) -> List[ForumInfo]:
+        """最近热门的吧列表"""
+        resp = self.session.get("https://tieba.baidu.com/f/index/rcmdForum", 
+            params=dict(pn=page, rn=size))
+        if resp.status_code != 200:
+            self.logger.error(f"获取热门吧失败: {resp.text}")
+            return []
+
+        res = []
+        for info in resp.json().get("data", {}).get("forum_info", []):
+            res.append(ForumInfo(
+                forum_id=info.get("forum_id") or 0,
+                forum_name=info.get("forum_name") or "",
+            ))
+        return res
+
+
+class Task:
+    name: str
+    logger = logging.getLogger(__name__)
+
     def run(self):
-        forums = self.get_likes(1)
+        self.logger.info(f"[{self.name}] 执行完成")
+
+
+class SignForums(Task):
+    name: str = "签到关注的贴吧"
+
+    def __init__(self, cli: Tieba) -> None:
+        self.cli = cli
+
+    def run(self):
+        forums = self.cli.get_likes(1)
         n_succeed, n_faild = 0, 0
         for forum in forums:
             try:
-                succeed = self.sign(forum["id"], forum["name"])
+                succeed = self.cli.sign(forum["id"], forum["name"])
                 if succeed:
                     n_succeed += 1
                 else:
@@ -168,16 +225,46 @@ class Tieba:
             time.sleep(1.3)
 
         msg = f"贴吧签到结束\n\n签到成功 {n_succeed} 个\n签到异常 {n_faild} 个"
-        for channel in self.channels:
+        for channel in self.cli.channels:
             try:
                 channel.send(msg)
             except Exception as e:
                 self.logger.error(f"[{channel.name}] 发送消息失败: {str(e)}")
 
+        return super().run()
+
+
+class LikeHotForums(Task):
+    name: str = "关注最近热门的吧"
+
+    def __init__(self, cli: Tieba) -> None:
+        self.cli = cli
+
+    def run(self):
+        forums = self.cli.get_hot_forums(8, 20)
+        n_succeed = 0
+        for forum in forums[::-1]:
+            try:
+                n_succeed += self.cli.like(forum.forum_id, forum.forum_name)
+            except Exception as e:
+                self.logger.error(f"[{self.name}] 关注贴吧异常：{str(e)}")
+
+        for channel in self.cli.channels:
+            try:
+                channel.send(f"成功关注 {n_succeed} 个贴吧")  
+            except Exception as e:
+                self.logger.error(f"[{channel.name}] 发送消息失败: {str(e)}")
+
+        return super().run()
+
 
 if __name__ == "__main__":
-    tb = Tieba("BDUSS", [
-        LarkChannel("飞书 webhook"),
-        WorkWechatBotChannel("企业微信机器人 key"),
+    cli = Tieba("<BDUSS>", [
+        LarkChannel("<飞书 webhook>"),
+        WorkWechatBotChannel("<企业微信机器人 key>"),
     ])
-    tb.run()
+    for task in [
+        LikeHotForums(cli=cli),
+        SignForums(cli=cli)
+    ]:
+        task.run()
