@@ -14,11 +14,15 @@
 ```python
 
 if __name__ == "__main__":
-    tb = Tieba("BDUSS cookie 值", [
-        LarkChannel("飞书 webhook 地址"),
-        WorkWechatBotChannel("企业微信机器人 key"),
+    cli = Tieba("<BDUSS cookie 值>", [
+        LarkChannel("<飞书 webhook>"),
+        WorkWechatBotChannel("<企业微信机器人 key>"),
     ])
-    tb.run()
+    for task in [
+        LikeHotForums(cli=cli), # 每天关注新贴吧
+        SignForums(cli=cli)     # 自动签到已经关注的贴吧
+    ]:
+        task.run()
 ```
 
 ## 支持的运行结果通知
