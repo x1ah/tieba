@@ -1,6 +1,4 @@
-from ast import For
 import logging
-from turtle import st
 import requests
 import hashlib
 import time
